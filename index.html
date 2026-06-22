@@ -174,7 +174,7 @@
 </head>
 <body>
 
-    <div id="conexion-status">Conectando con el servidor...</div>
+    <div id="conexion-status" onclick="abrirModalOnline()" style="cursor: pointer;" title="Ver conectados">Conectando con el servidor...</div>
 
     <div id="auth-container">
         
@@ -219,7 +219,7 @@
 
     <div id="app-container">
         <div class="top-nav">
-            <button class="btn-saldo" onclick="abrirModalSaldo()">💰 Mi Saldo</button>
+            <button class="btn-saldo" id="nav-btn-saldo" onclick="abrirModalSaldo()">💰 Mi Saldo</button>
             <button onclick="abrirModalHistorial()">🎟️ Tickets</button>
             
             <button class="admin-only btn-recargas" onclick="abrirModalRecargas()">💳 Recargas</button>
@@ -367,6 +367,13 @@
     </div>
 
     <!-- MODAL LISTA DE TICKETS MEJORADO -->
+<div class="modal-overlay" id="modal-online" style="z-index: 1006;">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn" onclick="cerrarModal('modal-online')">&times;</span>
+            <h3>Usuarios en Línea 🟢</h3>
+            <div id="lista-usuarios-online" style="margin-top: 15px; max-height: 300px; overflow-y: auto;"></div>
+        </div>
+    </div>
     <div class="modal-overlay" id="modal-historial">
         <div class="modal-content" style="max-width: 600px;">
             <span class="close-btn" onclick="cerrarModal('modal-historial')">&times;</span>
@@ -420,6 +427,21 @@
                 <div id="lista-ganadores" style="max-height:250px; overflow-y:auto; border:1px solid #eee; padding:10px; background:#fdfdfd;"></div>
                 <div id="total-pagar" style="margin-top:15px; padding:15px; background:#fff3cd; border:1px solid #ffeeba; text-align:right; font-size:18px; font-weight:bold; color:#856404;">Total: 0.00 Bs</div>
             </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-premio" style="z-index: 10000;">
+        <div class="modal-content" style="max-width: 400px; text-align: center; background: #1a1a1a; border: 2px solid #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.5);">
+            <h2 style="color: #00ffcc; text-shadow: 0 0 10px #00ffcc; font-size: 28px; margin-top: 10px; border-bottom: none;">¡TICKET GANADOR!</h2>
+            <div style="font-size: 50px; margin: 10px 0;">🎉🎰💰</div>
+            <p style="color: #fff; font-size: 16px;">Se ha asignado un premio a tu cuenta.</p>
+            <div style="background: #2a2a2a; border: 1px dashed #00ffcc; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <p style="color: #aaa; margin: 5px 0;">Ticket N°:</p>
+                <h3 style="color: #fff; margin: 0; font-size: 24px; letter-spacing: 2px;" id="notif-ticket-num">#000000</h3>
+                <p style="color: #aaa; margin: 15px 0 5px 0;">Monto Acreditado:</p>
+                <h1 style="color: #28a745; margin: 0; font-size: 38px; text-shadow: 0 0 15px rgba(40,167,69,0.8);" id="notif-monto-premio">0.00 Bs</h1>
+            </div>
+            <button class="auth-btn" style="background: #00ffcc; color: #000; width: 100%; box-shadow: 0 0 10px #00ffcc; font-weight: 900; font-size: 18px;" onclick="limpiarAlertaPremio()">¡RECOGER PREMIO!</button>
         </div>
     </div>
 
@@ -483,13 +505,16 @@
         });
 
         // Este lector extrae todos los tickets sin importar cómo estén guardados
+        // Este lector extrae todos los tickets sin importar cómo estén guardados
         onValue(ref(db, 'tickets'), (snapshot) => {
             historialTickets = []; 
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 for (let key in data) {
                     if (data[key]) {
-                        historialTickets.push(data[key]);
+                        let ticketData = data[key];
+                        ticketData.idFirebase = key; // CLAVE: Guardamos el ID interno de Firebase
+                        historialTickets.push(ticketData);
                     }
                 }
             }
@@ -515,6 +540,20 @@
                     if(usuarioActual && usuarioActual.cedula === usr.cedula) {
                         usuarioActual = usr;
                         document.getElementById('monto-saldo-actual').textContent = parseFloat(usuarioActual.saldo).toFixed(2) + " Bs";
+                        
+                        if (usuarioActual.rol === "Jugador") {
+                            document.getElementById('nav-btn-saldo').textContent = `💰 Mi Saldo: ${parseFloat(usuarioActual.saldo).toFixed(2)} Bs`;
+                        } else {
+                            document.getElementById('nav-btn-saldo').textContent = `💰 Caja Fuerte`;
+                        }
+
+                        // EXPLOTAR NOTIFICACIÓN SI HAY UN PREMIO
+                        if (usr.alertaPremio) {
+                            document.getElementById('notif-ticket-num').textContent = "#" + usr.alertaPremio.ticket;
+                            document.getElementById('notif-monto-premio').textContent = parseFloat(usr.alertaPremio.monto).toFixed(2) + " Bs";
+                            document.getElementById('modal-premio').style.display = 'flex';
+                        }
+                        
                         verificarAlertaSaldo();
                     }
                 });
@@ -522,18 +561,58 @@
             actualizarTablaUsuarios();
         });
 
+        // Función para limpiar la alerta de la base de datos cuando el jugador hace clic en "Recoger"
+        window.limpiarAlertaPremio = () => {
+            document.getElementById('modal-premio').style.display = 'none';
+            if (usuarioActual && usuarioActual.cedula !== "admin") {
+                update(ref(db), { [`/usuarios/${usuarioActual.cedula}/alertaPremio`]: null });
+            }
+        };
+
+        let listaSesionesActivas = [];
         onValue(ref(db, 'sesiones'), (snapshot) => {
             usuariosOnline = 0;
-            if (snapshot.exists()) snapshot.forEach(child => { if (child.val().online === true) usuariosOnline++; });
+            listaSesionesActivas = [];
+            if (snapshot.exists()) {
+                snapshot.forEach(child => { 
+                    const data = child.val();
+                    if (data.online === true) {
+                        usuariosOnline++;
+                        listaSesionesActivas.push({
+                            cedula: child.key,
+                            nombre: data.nombre || "Usuario",
+                            rol: data.rol || "Jugador"
+                        });
+                    }
+                });
+            }
             actualizarEstadoConexion();
         });
+
+        window.abrirModalOnline = () => {
+            if (!usuarioActual || usuarioActual.rol !== "Administrador") return; // Solo admin puede abrir la lista
+            const contenedor = document.getElementById('lista-usuarios-online');
+            contenedor.innerHTML = '';
+            
+            listaSesionesActivas.forEach(user => {
+                const div = document.createElement('div');
+                div.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;";
+                div.innerHTML = `
+                    <div><b>${user.nombre}</b> <br> <span style="font-size:12px; color:#666;">C.I: ${user.cedula}</span></div>
+                    <span class="rol-badge ${user.rol === 'Administrador' ? 'rol-admin' : 'rol-jugador'}">${user.rol}</span>
+                `;
+                contenedor.appendChild(div);
+            });
+            document.getElementById('modal-online').style.display = 'flex';
+        };
 
         function actualizarEstadoConexion() {
             if(usuarioActual) {
                 statusDiv.style.backgroundColor = '#28a745';
                 statusDiv.style.color = 'white';
                 let texto = `🟢 Online - ${usuarioActual.nombre}`;
-                if(usuarioActual.rol === "Administrador") texto += ` | 👥 Jugadores en línea: ${usuariosOnline}`;
+                // Agregamos el aviso de que se puede hacer clic
+                if(usuarioActual.rol === "Administrador") texto += ` | 👥 Jugadores en línea: ${usuariosOnline} (Clic para ver)`;
                 statusDiv.textContent = texto;
             } else {
                 statusDiv.style.backgroundColor = '#ffc107';
@@ -604,6 +683,13 @@
             document.getElementById('nombre-cliente-ticket').textContent = `Cliente: ${usuarioActual.nombre}`;
             document.getElementById('monto-saldo-actual').textContent = parseFloat(usuarioActual.saldo).toFixed(2) + " Bs";
             
+            // NUEVO: Mostrar saldo en el botón superior al entrar
+            if (usuarioActual.rol === "Jugador") {
+                document.getElementById('nav-btn-saldo').textContent = `💰 Mi Saldo: ${parseFloat(usuarioActual.saldo).toFixed(2)} Bs`;
+            } else {
+                document.getElementById('nav-btn-saldo').textContent = `💰 Caja Fuerte`;
+            }
+            
             actualizarEstadoConexion();
             verificarAlertaSaldo();
 
@@ -618,16 +704,15 @@
                 document.getElementById('panel-recarga-jugador').style.display = 'block';
             }
 
-            if (usuarioActual.cedula !== "admin") {
-                const sesionRef = ref(db, `sesiones/${usuarioActual.cedula}`);
-                set(sesionRef, { online: true });
-                onDisconnect(sesionRef).set({ online: false }); 
-            }
+            // Ahora registramos a todos (incluyendo admin) con su nombre y rol
+            const sesionRef = ref(db, `sesiones/${usuarioActual.cedula}`);
+            set(sesionRef, { online: true, nombre: usuarioActual.nombre, rol: usuarioActual.rol });
+            onDisconnect(sesionRef).set({ online: false }); 
         }
 
         window.cerrarSesion = () => {
             if(confirm("¿Seguro que deseas salir?")) {
-                if (usuarioActual && usuarioActual.cedula !== "admin") set(ref(db, `sesiones/${usuarioActual.cedula}`), { online: false });
+                if (usuarioActual) set(ref(db, `sesiones/${usuarioActual.cedula}`), { online: false });
                 usuarioActual = null;
                 jugadasTicket = []; actualizarVistaTicket();
                 document.getElementById('app-container').style.display = 'none';
@@ -946,7 +1031,7 @@
         
         window.verificarGanadores = () => {
             const loteria = document.getElementById('select-loteria-resultado').value;
-            const horaSorteoBusqueda = document.getElementById('select-hora-resultado').value; // Lee la hora elegida
+            const horaSorteoBusqueda = document.getElementById('select-hora-resultado').value;
             const numero = document.getElementById('select-numero-ganador').value;
             const listaDiv = document.getElementById('lista-ganadores');
             const totalDiv = document.getElementById('total-pagar');
@@ -954,26 +1039,70 @@
             listaDiv.innerHTML = ''; let totalPagar = 0; let ganadores = 0;
 
             historialTickets.forEach(ticket => {
-                // FILTRO CLAVE: Solo revisamos los tickets que pertenecen al Sorteo de la Hora Seleccionada
                 if (ticket.horaSorteo === horaSorteoBusqueda) {
-                    const jG = (ticket.jugadas || []).filter(j => j.numero === numero && j.loteria === loteria);
-                    if (jG.length > 0) {
-                        ganadores++;
-                        jG.forEach(jugada => {
+                    // Recorremos usando el índice original de la jugada
+                    (ticket.jugadas || []).forEach((jugada, indexJugada) => {
+                        if (jugada.numero === numero && jugada.loteria === loteria) {
+                            ganadores++;
                             const premio = jugada.monto * MULTIPLICADOR_PREMIO;
                             totalPagar += premio;
+                            
+                            // Lógica del botón Cobrar
+                            let btnCobrar = "";
+                            if (ticket.cedulaCliente !== "admin" && ticket.cedulaCliente !== undefined) {
+                                if (jugada.cobrado === true) {
+                                    btnCobrar = `<span style="color: #28a745; font-weight: bold; font-size: 14px; float: right; margin-top: 5px;">✅ Pagado</span>`;
+                                } else {
+                                    // Si no ha cobrado, le mostramos el botón
+                                    btnCobrar = `<button onclick="cobrarPremio('${ticket.idFirebase}', ${indexJugada}, '${ticket.cedulaCliente}', ${premio}, '${ticket.serial}')" style="background: var(--success-color); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; float: right; margin-top: 5px; transition: 0.2s;">💰 Cobrar ${premio.toFixed(2)} Bs</button>`;
+                                }
+                            } else {
+                                btnCobrar = `<span style="font-size: 12px; color: #666; float: right; margin-top: 5px;">Ticket de Agencia Local</span>`;
+                            }
+
                             const div = document.createElement('div');
                             div.style.cssText = "background:#e8f5e9; border:1px solid #c8e6c9; padding:10px; margin-bottom:10px; border-radius:4px;";
-                            div.innerHTML = `<b>Ticket N°:</b> ${ticket.serial} | <b>Cliente:</b> ${ticket.nombreCliente}<br><b>Apostó:</b> ${jugada.monto} Bs al ${numero} (${loteria} - ${horaSorteoBusqueda})<br><span style="color:#28a745; font-size:16px; font-weight:bold; float:right;">Premio: ${premio.toFixed(2)} Bs</span><div style="clear:both;"></div>`;
+                            div.innerHTML = `<b>Ticket N°:</b> ${ticket.serial} | <b>Cliente:</b> ${ticket.nombreCliente}<br><b>Apostó:</b> ${jugada.monto} Bs al ${numero} (${loteria} - ${horaSorteoBusqueda})<br><span style="color:#28a745; font-size:16px; font-weight:bold; float:right;">Premio: ${premio.toFixed(2)} Bs</span><div style="clear:both;"></div>${btnCobrar}<div style="clear:both;"></div>`;
                             listaDiv.appendChild(div);
-                        });
-                    }
+                        }
+                    });
                 }
             });
             
             if(ganadores === 0) listaDiv.innerHTML = '<p style="text-align:center; margin-top:10px;">No hay ganadores para este sorteo.</p>';
-            totalDiv.innerHTML = `Total a Pagar: ${totalPagar.toFixed(2)} Bs`;
+            totalDiv.innerHTML = `Total a Pagar de la Agencia: ${totalPagar.toFixed(2)} Bs`;
             document.getElementById('area-resultados').style.display = 'block';
+        };
+
+        // NUEVA FUNCIÓN: Pasar el dinero al saldo del jugador
+        // NUEVA FUNCIÓN: Pasar el dinero al saldo del jugador
+        window.cobrarPremio = (ticketId, indexJugada, cedulaGanador, montoPremio, serialTicket) => {
+            if(!confirm(`¿Estás seguro de pagar ${montoPremio} Bs al jugador? El dinero se le sumará a su saldo disponible automáticamente.`)) return;
+
+            // Buscamos el saldo actual del jugador en la base de datos
+            get(child(ref(db), `usuarios/${cedulaGanador}`)).then(snap => {
+                if(snap.exists()) {
+                    const user = snap.val();
+                    const nuevoSaldo = user.saldo + montoPremio;
+                    
+                    let updates = {};
+                    // 1. Sumamos el saldo al jugador
+                    updates[`/usuarios/${cedulaGanador}/saldo`] = nuevoSaldo;
+                    // 2. Marcamos esa jugada específica del ticket como cobrada
+                    updates[`/tickets/${ticketId}/jugadas/${indexJugada}/cobrado`] = true;
+                    // 3. Enviamos la notificación secreta para que explote en su pantalla
+                    updates[`/usuarios/${cedulaGanador}/alertaPremio`] = { monto: montoPremio, ticket: serialTicket };
+
+                    update(ref(db), updates).then(() => {
+                        alert("¡Premio pagado y notificado al jugador exitosamente!");
+                        verificarGanadores(); // Refrescamos la pantalla para mostrar el check verde ✅
+                    }).catch(error => {
+                        alert("Error al pagar el premio: " + error.message);
+                    });
+                } else {
+                    alert("Error: No se encontró al jugador en la base de datos.");
+                }
+            });
         };
 
         document.addEventListener("DOMContentLoaded", () => generarPanelNumeros());
