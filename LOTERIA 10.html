@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Loterías - Billetera Inteligente</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --nav-bg: #343a40;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Indicador de conexión */
+        #conexion-status {
+            background-color: #ffc107;
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        /* ------------------------------------
+           PANTALLA DE LOGIN / REGISTRO
+           ------------------------------------ */
+        #auth-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            margin-top: 50px;
+            text-align: center;
+        }
+
+        .auth-form { display: flex; flex-direction: column; gap: 15px; text-align: left; }
+        .auth-form label { font-weight: bold; font-size: 14px; margin-bottom: -5px; }
+        .auth-form input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        .auth-btn { background: var(--primary-color); color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s;}
+        .auth-btn:hover { background: #004494; }
+        .auth-switch { color: var(--primary-color); cursor: pointer; text-decoration: underline; font-size: 14px; margin-top: 15px; }
+        
+        .pago-movil-box { background: #f8f9fa; padding: 10px; border: 1px dashed #ccc; border-radius: 5px; margin-top: 5px; }
+        .pago-movil-box h5 { margin: 0 0 10px 0; color: #666; }
+
+        /* ------------------------------------
+           APP PRINCIPAL (Oculta al inicio)
+           ------------------------------------ */
+        #app-container {
+            display: none; 
+            width: 100%;
+            max-width: 1000px;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        /* Menú Superior */
+        .top-nav {
+            background-color: var(--nav-bg);
+            width: 100%;
+            padding: 15px 20px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            flex-wrap: wrap;
+        }
+
+        .top-nav button {
+            background-color: transparent; color: white; border: 1px solid rgba(255,255,255,0.5);
+            padding: 10px 15px; border-radius: 5px; font-size: 14px; font-weight: bold;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+            flex: 1; justify-content: center; min-width: 120px;
+        }
+
+        .top-nav button:hover { background-color: white; color: var(--nav-bg); border-color: white; }
+        .btn-saldo { background-color: rgba(40, 167, 69, 0.2) !important; border-color: var(--success-color) !important; }
+        .btn-saldo:hover { background-color: var(--success-color) !important; color: white !important; }
+        
+        .btn-recargas { background-color: rgba(23, 162, 184, 0.2) !important; border-color: var(--info-color) !important; }
+        .btn-recargas:hover { background-color: var(--info-color) !important; color: white !important; }
+
+        .btn-salir { border-color: var(--danger-color) !important; color: #ffcccc !important;}
+        .btn-salir:hover { background-color: var(--danger-color) !important; color: white !important;}
+
+        /* Paneles */
+        .container-app { display: flex; gap: 20px; width: 100%; }
+        .panel { background: var(--panel-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 2; }
+        .panel h2 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        .monto-control { margin-bottom: 20px; background: #e9ecef; padding: 15px; border-radius: 6px; font-weight: bold; display: flex; flex-direction: column; gap: 15px; }
+        .control-group { display: flex; align-items: center; justify-content: space-between; }
+        .monto-control input, .monto-control select { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 150px; }
+        .monto-control select { background-color: white; font-weight: bold; color: var(--primary-color); }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; }
+        .grid button { padding: 15px 10px; font-size: 18px; font-weight: bold; background-color: #fff; border: 2px solid var(--primary-color); color: var(--primary-color); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .grid button:hover { background-color: var(--primary-color); color: #fff; }
+
+        /* Ticket */
+        .ticket-container { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        .ticket { background: #fff; padding: 20px; border-radius: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: 'Courier New', Courier, monospace; border: 1px dashed #999; min-height: 400px; display: flex; flex-direction: column; }
+        .ticket-header { text-align: center; font-size: 18px; font-weight: bold; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 15px; }
+        .ticket-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .ticket-list li { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; border-bottom: 1px dotted #ccc; padding-bottom: 6px; }
+        .jugada-info { display: flex; flex-direction: column; }
+        .loteria-tag { font-size: 11px; font-weight: bold; color: #666; margin-bottom: 2px; }
+        .btn-delete { background: var(--danger-color); color: white; border: none; border-radius: 3px; cursor: pointer; padding: 2px 6px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .ticket-total { margin-top: 15px; border-top: 1px dashed #999; padding-top: 10px; font-size: 18px; font-weight: bold; text-align: right; }
+        .action-btn { padding: 12px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
+        .btn-imprimir { background-color: var(--success-color); }
+        .btn-imprimir:hover { background-color: #218838; }
+        .btn-limpiar { background-color: var(--danger-color); }
+
+        /* Modales */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; padding: 10px; box-sizing: border-box;}
+        .modal-content { background: #fff; padding: 25px; border-radius: 8px; width: 100%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; overflow-y: auto;}
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; font-weight: bold; cursor: pointer; color: #666; }
+        .close-btn:hover { color: #000; }
+        .modal-content h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+
+        /* Componentes de Tablas */
+        .table-container { overflow-x: auto; margin-top: 15px; border: 1px solid #ccc; border-radius: 5px;}
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px;}
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .rol-badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+        .rol-admin { background-color: var(--danger-color); }
+        .rol-jugador { background-color: var(--primary-color); }
+        
+        .nuevo-usuario-box { background: #f0f8ff; padding: 15px; border: 1px dashed var(--primary-color); border-radius: 5px; margin-bottom: 15px; display: none; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); padding: 8px 15px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;}
+        .btn-outline:hover { background: var(--primary-color); color: white; }
+
+        /* Alerta Saldo 0 */
+        .alerta-saldo { background: #fff3cd; color: #856404; padding: 10px; border: 1px solid #ffeeba; border-radius: 5px; font-weight: bold; text-align: center; margin-bottom: 15px; display: none; }
+
+        @media (max-width: 768px) {
+            .container-app { flex-direction: column; }
+            .control-group { flex-direction: column; align-items: flex-start; gap: 5px;}
+            .monto-control input, .monto-control select { width: 100%; }
+            #conexion-status { position: relative; top: 0; right: 0; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="conexion-status">Conectando con el servidor...</div>
+
+    <div id="auth-container">
+        
+        <div id="form-login">
+            <h2 style="color: var(--primary-color); margin-top: 0;">Iniciar Sesión</h2>
+            <div class="auth-form">
+                <label>Cédula</label>
+                <input type="text" id="login-cedula" placeholder="Ej: 12345678">
+                <label>Contraseña</label>
+                <input type="password" id="login-clave" placeholder="Ingresa tu clave">
+                <button class="auth-btn" onclick="iniciarSesion()">Entrar al Sistema</button>
+            </div>
+            <div class="auth-switch" onclick="toggleAuth('registro')">¿Primera vez? Regístrate aquí</div>
+        </div>
+
+        <div id="form-registro" style="display: none;">
+            <h2 style="color: var(--primary-color); margin-top: 0;">Crear Cuenta</h2>
+            <div class="auth-form">
+                <label>Nombre Completo</label>
+                <input type="text" id="reg-nombre" placeholder="Ej: Juan Pérez">
+                <label>Cédula</label>
+                <input type="text" id="reg-cedula" placeholder="Ej: 12345678">
+                <label>Contraseña</label>
+                <input type="password" id="reg-clave" placeholder="Crea una clave secreta">
+                <label>Teléfono de Contacto</label>
+                <input type="text" id="reg-contacto" placeholder="Ej: 04141234567">
+                
+                <div class="pago-movil-box">
+                    <h5>Datos para cobrar Premios (Pago Móvil)</h5>
+                    <label>Banco</label>
+                    <input type="text" id="reg-banco" placeholder="Ej: Banco de Venezuela">
+                    <label style="margin-top: 10px; display: block;">Teléfono Afiliado</label>
+                    <input type="text" id="reg-telf-banco" placeholder="Ej: 04141234567">
+                </div>
+
+                <button class="auth-btn" style="background-color: var(--success-color);" onclick="registrarUsuario()">Completar Registro</button>
+            </div>
+            <div class="auth-switch" onclick="toggleAuth('login')">¿Ya tienes cuenta? Inicia sesión</div>
+        </div>
+    </div>
+
+
+    <div id="app-container">
+        <div class="top-nav">
+            <button class="btn-saldo" onclick="abrirModalSaldo()">💰 Mi Saldo</button>
+            <button onclick="abrirModalHistorial()">🎟️ Tickets</button>
+            
+            <button class="admin-only btn-recargas" onclick="abrirModalRecargas()">💳 Recargas</button>
+            <button class="admin-only" onclick="abrirModalResultados()">🎲 Resultados</button>
+            <button class="admin-only" onclick="abrirModalUsuarios()">👥 Usuarios</button>
+            <button class="admin-only" onclick="verReporte()">📊 Reporte</button>
+            
+            <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
+        </div>
+
+        <div id="alerta-saldo-cero" class="alerta-saldo">
+            ⚠️ Tienes 0.00 Bs. Debes recargar tu saldo en la pestaña "Mi Saldo" para poder jugar.
+        </div>
+
+        <div class="container-app">
+            <div class="panel">
+                <h2>Panel de Apuestas</h2>
+                <div class="monto-control">
+                    <div class="control-group">
+                        <label>Lotería a jugar:</label>
+                        <select id="select-loteria">
+                            <option value="Lotto Activo">Lotto Activo</option>
+                            <option value="La Granjita">La Granjita</option>
+                            <option value="Guácharo">Guácharo Activo</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Monto (Bs):</label>
+                        <input type="number" id="monto" min="1" step="0.5" value="10.00">
+                    </div>
+                </div>
+                <div class="grid" id="panel-numeros"></div>
+            </div>
+
+            <div class="ticket-container">
+                <div class="ticket">
+                    <div class="ticket-header">
+                        *** TICKET DE VENTA ***<br>
+                        N° <span id="serial-ticket">000001</span><br>
+                        <span style="font-size: 12px; font-weight: normal;" id="nombre-cliente-ticket">Cliente: -</span><br>
+                        <span style="font-size: 11px; font-weight: normal; color: #555;" id="fecha-ticket">Fecha: -</span><br>
+                        <span style="font-size: 15px; font-weight: bold; color: var(--primary-color);" id="sorteo-ticket">Sorteo: -</span>
+                    </div>
+                    <!-- AQUÍ RESTAURAMOS LA LISTA Y LOS BOTONES -->
+                    <ul class="ticket-list" id="lista-ticket"></ul>
+                    <div class="ticket-total">TOTAL: <span id="total-ticket">0.00</span> Bs</div>
+                </div>
+                <button class="action-btn btn-imprimir" id="btn-procesar" onclick="procesarTicket()">Imprimir y Nuevo Ticket</button>
+                <button class="action-btn btn-limpiar" onclick="limpiarTicket()">Anular / Limpiar</button>
+            </div>
+        </div>
+
+
+    <div class="modal-overlay" id="modal-saldo">
+        <div class="modal-content" style="max-width: 450px;">
+            <span class="close-btn" onclick="cerrarModal('modal-saldo')">&times;</span>
+            <h3>Mi Billetera</h3>
+            <p id="saldo-desc" style="margin-bottom: 5px;">Este es tu saldo disponible para jugar.</p>
+            <div style="background: #e8f5e9; border: 2px solid #c8e6c9; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
+                <div style="font-size: 36px; font-weight: bold; color: #2e7d32;" id="monto-saldo-actual">0.00 Bs</div>
+            </div>
+
+            <div id="panel-recarga-jugador" style="display: none;">
+                <h4 style="margin-bottom: 10px; border-top: 1px dashed #ccc; padding-top: 15px;">Añadir Fondos</h4>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-size: 14px; margin-bottom: 15px;">
+                    <b>Datos para Recargar (Pago Móvil):</b><br>
+                    Banco: Banco de Venezuela (0102)<br>
+                    Cédula: V-12345678<br>
+                    Teléfono: 0414-0000000<br>
+                    <span style="color: var(--danger-color); font-weight: bold;">(Recarga mínima: 1000 Bs)</span>
+                </div>
+                <div class="auth-form">
+                    <label>Monto Transferido (Bs)</label>
+                    <input type="number" id="monto-recarga" placeholder="Mínimo 1000" min="1000">
+                    <label>N° de Referencia (Últimos 6 dígitos)</label>
+                    <input type="text" id="ref-recarga" placeholder="Ej: 456789">
+                    <button class="auth-btn" style="background-color: var(--info-color);" onclick="solicitarRecarga()">Reportar Pago</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-recargas">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-btn" onclick="cerrarModal('modal-recargas')">&times;</span>
+            <h3>Control de Recargas</h3>
+            <p>Confirma el pago en tu banco e ingresa el monto exacto a recargarle al cliente.</p>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Referencia</th>
+                            <th>Monto Reportado</th>
+                            <th>Monto a Acreditar (Bs)</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-recargas-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-usuarios">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-btn" onclick="cerrarModal('modal-usuarios')">&times;</span>
+            <h3>Gestión de Usuarios</h3>
+            <button class="btn-outline" onclick="toggleNuevoUsuario()">+ Crear Usuario Manualmente</button>
+            
+            <div class="nuevo-usuario-box" id="box-crear-usuario">
+                <h4 style="margin-top:0;">Nuevo Usuario</h4>
+                <div class="auth-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div><label>Cédula</label><input type="text" id="admin-c-cedula"></div>
+                    <div><label>Nombre</label><input type="text" id="admin-c-nombre"></div>
+                    <div><label>Contraseña</label><input type="text" id="admin-c-clave"></div>
+                    <div>
+                        <label>Membresía</label>
+                        <select id="admin-c-rol" style="width: 100%; padding: 10px; border-radius: 5px;">
+                            <option value="Jugador">Jugador</option>
+                            <option value="Administrador">Administrador</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="auth-btn" style="margin-top: 15px; width: 100%;" onclick="crearUsuarioAdmin()">Guardar Usuario</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cédula</th>
+                            <th>Nombre</th>
+                            <th>Clave</th>
+                            <th>Saldo</th>
+                            <th>Rol</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-usuarios-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LISTA DE TICKETS MEJORADO -->
+    <div class="modal-overlay" id="modal-historial">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-btn" onclick="cerrarModal('modal-historial')">&times;</span>
+            <h3>Tickets Vendidos</h3>
+            <div id="contenedor-historial" style="overflow-y:auto; flex-grow:1;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL VISUALIZAR TICKET -->
+    <div class="modal-overlay" id="modal-detalle-ticket" style="z-index: 1005;">
+        <div class="modal-content" style="max-width: 350px; background: #fdfdfd;">
+            <span class="close-btn" onclick="cerrarModal('modal-detalle-ticket')">&times;</span>
+            <h3 style="border-bottom: none; margin-bottom: 0; text-align: center;">Visor de Ticket</h3>
+            <div id="contenido-detalle-ticket" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-resultados">
+        <div class="modal-content">
+            <span class="close-btn" onclick="cerrarModal('modal-resultados')">&times;</span>
+            <h3>Revisar Tickets Ganadores</h3>
+            
+            <div style="display:flex; flex-wrap: wrap; gap:10px; margin-bottom:15px;">
+                <select id="select-loteria-resultado" style="padding:10px; flex:1; min-width: 120px;">
+                    <option value="Lotto Activo">Lotto Activo</option>
+                    <option value="La Granjita">La Granjita</option>
+                    <option value="Guácharo">Guácharo Activo</option>
+                </select>
+                
+                <select id="select-hora-resultado" style="padding:10px; flex:1; min-width: 100px;">
+                    <option value="8:00 AM">8:00 AM</option>
+                    <option value="9:00 AM">9:00 AM</option>
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="12:00 PM">12:00 PM</option>
+                    <option value="1:00 PM">1:00 PM</option>
+                    <option value="2:00 PM">2:00 PM</option>
+                    <option value="3:00 PM">3:00 PM</option>
+                    <option value="4:00 PM">4:00 PM</option>
+                    <option value="5:00 PM">5:00 PM</option>
+                    <option value="6:00 PM">6:00 PM</option>
+                    <option value="7:00 PM">7:00 PM</option>
+                </select>
+                
+                <select id="select-numero-ganador" style="padding:10px; flex:1; min-width: 80px;"></select>
+                
+                <button class="auth-btn" style="width: 100%;" onclick="verificarGanadores()">Buscar Ganadores</button>
+            </div>
+            
+            <div id="area-resultados" style="display:none;">
+                <div id="lista-ganadores" style="max-height:250px; overflow-y:auto; border:1px solid #eee; padding:10px; background:#fdfdfd;"></div>
+                <div id="total-pagar" style="margin-top:15px; padding:15px; background:#fff3cd; border:1px solid #ffeeba; text-align:right; font-size:18px; font-weight:bold; color:#856404;">Total: 0.00 Bs</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, get, child, push, onValue, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxJT_8nOtqNjdbUCVUhnEPD0DIaFUHY2c",
+            authDomain: "loteria-b198d.firebaseapp.com",
+            databaseURL: "https://loteria-b198d-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "loteria-b198d",
+            storageBucket: "loteria-b198d.firebasestorage.app",
+            messagingSenderId: "1004199268276",
+            appId: "1:1004199268276:web:5864556efe848155b7ace1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Variables Globales
+        let serialActual = 1;
+        let jugadasTicket = [];
+        let historialTickets = []; 
+        let listaUsuarios = [];
+        let listaRecargasPendientes = [];
+        const MULTIPLICADOR_PREMIO = 30;
+        let conexionLista = false;
+        let usuarioActual = null; 
+        let usuariosOnline = 0; 
+        const statusDiv = document.getElementById('conexion-status');
+
+// FUNCIONES DE TIEMPO
+        function formatearFecha(fecha) {
+            const opciones = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true };
+            return fecha.toLocaleString('es-VE', opciones);
+        }
+
+        function obtenerProximoSorteo() {
+            const ahora = new Date();
+            let hora = ahora.getHours();
+            // Siempre calcula para la siguiente hora en punto
+            hora += 1;
+            let ampm = hora >= 12 && hora < 24 ? 'PM' : 'AM';
+            let hora12 = hora % 12 || 12;
+            return `${hora12}:00 ${ampm}`;
+        }
+
+        // LECTURA DE BASE DE DATOS (NUEVO MÉTODO ROBUSTO)
+        onValue(ref(db, 'config/serialActual'), (snapshot) => {
+            conexionLista = true;
+            actualizarEstadoConexion();
+            if (snapshot.exists()) serialActual = snapshot.val();
+            else { serialActual = 1; set(ref(db, 'config/serialActual'), serialActual); }
+            
+            // NUEVO: Actualizar el ticket visual en pantalla en tiempo real para todos
+            const serialSpan = document.getElementById('serial-ticket');
+            if (serialSpan) {
+                serialSpan.textContent = serialActual.toString().padStart(6, '0');
+            }
+        });
+
+        // Este lector extrae todos los tickets sin importar cómo estén guardados
+        onValue(ref(db, 'tickets'), (snapshot) => {
+            historialTickets = []; 
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                for (let key in data) {
+                    if (data[key]) {
+                        historialTickets.push(data[key]);
+                    }
+                }
+            }
+        });
+
+        onValue(ref(db, 'recargas'), (snapshot) => {
+            listaRecargasPendientes = [];
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    if(data.estado === 'Pendiente') listaRecargasPendientes.push({ id: child.key, ...data });
+                });
+            }
+            actualizarTablaRecargas();
+        });
+
+        onValue(ref(db, 'usuarios'), (snapshot) => {
+            listaUsuarios = [];
+            if (snapshot.exists()) {
+                snapshot.forEach((childSnapshot) => {
+                    const usr = childSnapshot.val();
+                    listaUsuarios.push(usr);
+                    if(usuarioActual && usuarioActual.cedula === usr.cedula) {
+                        usuarioActual = usr;
+                        document.getElementById('monto-saldo-actual').textContent = parseFloat(usuarioActual.saldo).toFixed(2) + " Bs";
+                        verificarAlertaSaldo();
+                    }
+                });
+            }
+            actualizarTablaUsuarios();
+        });
+
+        onValue(ref(db, 'sesiones'), (snapshot) => {
+            usuariosOnline = 0;
+            if (snapshot.exists()) snapshot.forEach(child => { if (child.val().online === true) usuariosOnline++; });
+            actualizarEstadoConexion();
+        });
+
+        function actualizarEstadoConexion() {
+            if(usuarioActual) {
+                statusDiv.style.backgroundColor = '#28a745';
+                statusDiv.style.color = 'white';
+                let texto = `🟢 Online - ${usuarioActual.nombre}`;
+                if(usuarioActual.rol === "Administrador") texto += ` | 👥 Jugadores en línea: ${usuariosOnline}`;
+                statusDiv.textContent = texto;
+            } else {
+                statusDiv.style.backgroundColor = '#ffc107';
+                statusDiv.style.color = '#000';
+                statusDiv.textContent = '🟢 Online';
+            }
+        }
+
+        function verificarAlertaSaldo() {
+            if(!usuarioActual) return;
+            const alerta = document.getElementById('alerta-saldo-cero');
+            if(usuarioActual.rol === "Jugador" && usuarioActual.saldo <= 0) alerta.style.display = 'block';
+            else alerta.style.display = 'none';
+        }
+
+        // AUTENTICACIÓN
+        window.toggleAuth = (vista) => {
+            document.getElementById('form-login').style.display = vista === 'login' ? 'block' : 'none';
+            document.getElementById('form-registro').style.display = vista === 'registro' ? 'block' : 'none';
+        };
+
+        window.registrarUsuario = () => {
+            const nombre = document.getElementById('reg-nombre').value.trim();
+            const cedula = document.getElementById('reg-cedula').value.trim();
+            const clave = document.getElementById('reg-clave').value.trim();
+            const contacto = document.getElementById('reg-contacto').value.trim();
+            const banco = document.getElementById('reg-banco').value.trim();
+            const telf = document.getElementById('reg-telf-banco').value.trim();
+
+            if(!nombre || !cedula || !clave) return alert("Nombre, Cédula y Contraseña son obligatorios.");
+
+            get(child(ref(db), `usuarios/${cedula}`)).then((snapshot) => {
+                if (snapshot.exists()) alert("¡Esta cédula ya está registrada!");
+                else {
+                    const nuevoUser = { cedula, nombre, clave, contacto, banco, telfBanco: telf, rol: "Jugador", saldo: 0.00 };
+                    set(ref(db, `usuarios/${cedula}`), nuevoUser).then(() => {
+                        alert("¡Registro exitoso! Ya puedes iniciar sesión.");
+                        document.getElementById('login-cedula').value = cedula;
+                        document.getElementById('login-clave').value = clave;
+                        window.toggleAuth('login');
+                    });
+                }
+            });
+        };
+
+        window.iniciarSesion = () => {
+            const cedula = document.getElementById('login-cedula').value.trim();
+            const clave = document.getElementById('login-clave').value.trim();
+
+            if(!cedula || !clave) return alert("Ingresa cédula y contraseña.");
+
+            if(cedula === "admin" && clave === "admin") {
+                usuarioActual = { nombre: "Súper Admin", cedula: "admin", rol: "Administrador", saldo: 0 };
+                entrarAlSistema(); return;
+            }
+
+            get(child(ref(db), `usuarios/${cedula}`)).then((snapshot) => {
+                if (snapshot.exists() && snapshot.val().clave === clave) {
+                    usuarioActual = snapshot.val();
+                    entrarAlSistema();
+                } else alert("Datos incorrectos o usuario no registrado.");
+            });
+        };
+
+        function entrarAlSistema() {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            document.getElementById('nombre-cliente-ticket').textContent = `Cliente: ${usuarioActual.nombre}`;
+            document.getElementById('monto-saldo-actual').textContent = parseFloat(usuarioActual.saldo).toFixed(2) + " Bs";
+            
+            actualizarEstadoConexion();
+            verificarAlertaSaldo();
+
+            const adminBtns = document.querySelectorAll('.admin-only');
+            if(usuarioActual.rol === "Administrador") {
+                adminBtns.forEach(btn => btn.style.display = 'flex');
+                document.getElementById('saldo-desc').textContent = "Total de ingresos brutos de la agencia.";
+                document.getElementById('panel-recarga-jugador').style.display = 'none';
+            } else {
+                adminBtns.forEach(btn => btn.style.display = 'none');
+                document.getElementById('saldo-desc').textContent = "Este es tu saldo disponible para jugar.";
+                document.getElementById('panel-recarga-jugador').style.display = 'block';
+            }
+
+            if (usuarioActual.cedula !== "admin") {
+                const sesionRef = ref(db, `sesiones/${usuarioActual.cedula}`);
+                set(sesionRef, { online: true });
+                onDisconnect(sesionRef).set({ online: false }); 
+            }
+        }
+
+        window.cerrarSesion = () => {
+            if(confirm("¿Seguro que deseas salir?")) {
+                if (usuarioActual && usuarioActual.cedula !== "admin") set(ref(db, `sesiones/${usuarioActual.cedula}`), { online: false });
+                usuarioActual = null;
+                jugadasTicket = []; actualizarVistaTicket();
+                document.getElementById('app-container').style.display = 'none';
+                document.getElementById('auth-container').style.display = 'block';
+                document.getElementById('login-clave').value = ''; 
+                document.getElementById('alerta-saldo-cero').style.display = 'none';
+                actualizarEstadoConexion();
+            }
+        };
+
+        // RECARGAS
+        window.solicitarRecarga = () => {
+            const monto = parseFloat(document.getElementById('monto-recarga').value);
+            const refNum = document.getElementById('ref-recarga').value.trim();
+            if(isNaN(monto) || monto < 1000) return alert("El monto mínimo es 1000 Bs.");
+            if(!refNum) return alert("Debes ingresar el número de referencia.");
+
+            push(ref(db, 'recargas'), {
+                cedula: usuarioActual.cedula, nombre: usuarioActual.nombre,
+                montoReportado: monto, referencia: refNum, estado: "Pendiente", fecha: new Date().toISOString()
+            }).then(() => {
+                alert("Pago reportado con éxito.");
+                document.getElementById('monto-recarga').value = ''; document.getElementById('ref-recarga').value = '';
+                window.cerrarModal('modal-saldo');
+            });
+        };
+
+        window.abrirModalRecargas = () => { document.getElementById('modal-recargas').style.display = 'flex'; };
+
+        function actualizarTablaRecargas() {
+            const tbody = document.getElementById('tabla-recargas-body');
+            tbody.innerHTML = '';
+            if(listaRecargasPendientes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay recargas pendientes.</td></tr>'; return;
+            }
+            listaRecargasPendientes.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${rec.nombre}</b><br><span style="font-size:12px;color:#666;">${rec.cedula}</span></td>
+                    <td>Ref: <b style="color:var(--info-color);">${rec.referencia}</b></td>
+                    <td>${rec.montoReportado} Bs</td>
+                    <td><input type="number" id="admin-rec-monto-${rec.id}" value="${rec.montoReportado}" style="width:100px; padding:5px;"> Bs</td>
+                    <td><button onclick="aprobarRecarga('${rec.id}', '${rec.cedula}')" style="background:var(--success-color); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Aprobar</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.aprobarRecarga = (idRecarga, cedulaUsuario) => {
+            const montoFinal = parseFloat(document.getElementById(`admin-rec-monto-${idRecarga}`).value);
+            if(isNaN(montoFinal) || montoFinal <= 0) return alert("Monto inválido.");
+
+            get(child(ref(db), `usuarios/${cedulaUsuario}`)).then(snap => {
+                if(snap.exists()) {
+                    const user = snap.val();
+                    const nuevoSaldo = user.saldo + montoFinal;
+                    
+                    set(ref(db, `usuarios/${cedulaUsuario}/saldo`), nuevoSaldo).then(() => {
+                        set(ref(db, `recargas/${idRecarga}/estado`), 'Aprobada');
+                        set(ref(db, `recargas/${idRecarga}/montoAprobado`), montoFinal);
+                        alert(`¡Recarga aprobada para ${user.nombre}!`);
+                    });
+                }
+            });
+        };
+
+        // ADMIN USUARIOS
+        window.abrirModalUsuarios = () => document.getElementById('modal-usuarios').style.display = 'flex';
+        window.toggleNuevoUsuario = () => { const b = document.getElementById('box-crear-usuario'); b.style.display = b.style.display === 'none' || b.style.display === '' ? 'block' : 'none'; };
+
+        function actualizarTablaUsuarios() {
+            const tbody = document.getElementById('tabla-usuarios-body');
+            tbody.innerHTML = '';
+            listaUsuarios.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${user.cedula}</td><td>${user.nombre}</td><td><span style="color:#dc3545;">${user.clave}</span></td><td>${parseFloat(user.saldo).toFixed(2)} Bs</td><td><span class="rol-badge ${user.rol === "Administrador" ? "rol-admin" : "rol-jugador"}">${user.rol}</span></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.crearUsuarioAdmin = () => {
+            const cedula = document.getElementById('admin-c-cedula').value.trim();
+            const nombre = document.getElementById('admin-c-nombre').value.trim();
+            const clave = document.getElementById('admin-c-clave').value.trim();
+            const rol = document.getElementById('admin-c-rol').value;
+            if(!cedula || !nombre || !clave) return alert("Faltan datos.");
+            set(ref(db, `usuarios/${cedula}`), { cedula, nombre, clave, rol, saldo: 0.00, contacto: "", banco: "", telfBanco: "" }).then(() => {
+                alert("Usuario creado."); window.toggleNuevoUsuario();
+            });
+        };
+
+        // FUNCIÓN DE REPORTE 
+        window.verReporte = () => {
+            if (usuarioActual.rol !== "Administrador") return;
+            const totalVentas = historialTickets.reduce((sum, t) => sum + (parseFloat(t.total) || 0), 0);
+            const totalTickets = historialTickets.length;
+            const usuariosRegistrados = listaUsuarios.length;
+            const recargasPendientes = listaRecargasPendientes.length;
+
+            alert(`📊 REPORTE GENERAL DE LA AGENCIA\n\n🎟️ Total Tickets Vendidos: ${totalTickets}\n💰 Venta Bruta Total: ${totalVentas.toFixed(2)} Bs\n\n👥 Usuarios Registrados: ${usuariosRegistrados}\n💳 Recargas Pendientes: ${recargasPendientes}`);
+        };
+
+        // TICKETS Y PUNTO DE VENTA
+        window.cerrarModal = (id) => document.getElementById(id).style.display = 'none';
+        window.abrirModalSaldo = () => {
+            if(usuarioActual.rol === "Administrador") document.getElementById('monto-saldo-actual').textContent = historialTickets.reduce((sum, t) => sum + t.total, 0).toFixed(2) + " Bs";
+            document.getElementById('modal-saldo').style.display = 'flex';
+        };
+
+        window.abrirModalHistorial = () => {
+            try {
+                const contenedor = document.getElementById('contenedor-historial');
+                contenedor.innerHTML = ''; 
+                
+                const ticketsValidos = (historialTickets || []).filter(t => t !== null && typeof t === 'object');
+                let ticketsAMostrar = usuarioActual.rol === "Jugador" ? ticketsValidos.filter(t => t.cedulaCliente === usuarioActual.cedula) : ticketsValidos;
+
+                if (ticketsAMostrar.length === 0) {
+                    contenedor.innerHTML = '<p style="text-align:center; color:#666; margin-top: 20px;">No hay tickets registrados en la base de datos.</p>';
+                } else {
+                    let tablaHTML = `
+                        <div style="width: 100%; overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #ccc;">
+                                    <th style="padding: 10px; text-align: left;">Serial</th>
+                                    ${usuarioActual.rol === "Administrador" ? '<th style="padding: 10px; text-align: left;">Cliente</th>' : ''}
+                                    <th style="padding: 10px; text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    [...ticketsAMostrar].reverse().forEach((ticket) => {
+                        const cliente = ticket.nombreCliente || "Desconocido";
+                        const totalNum = parseFloat(ticket.total || 0);
+                        const total = isNaN(totalNum) ? "0.00" : totalNum.toFixed(2);
+                        const serialVisual = ticket.serial || "ANTIGUO";
+                        
+                        tablaHTML += `
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; font-weight: bold;">
+                                    <a href="#" onclick="verTicketCompleto('${serialVisual}')" style="color: var(--primary-color); text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                                        #${serialVisual} 🔍
+                                    </a>
+                                </td>
+                                ${usuarioActual.rol === "Administrador" ? `<td style="padding: 10px; word-break: break-word;">${cliente}</td>` : ''}
+                                <td style="padding: 10px; text-align: right; font-weight: bold;">${total} Bs</td>
+                            </tr>
+                        `;
+                    });
+
+                    tablaHTML += `</tbody></table></div>`;
+                    if (usuarioActual.rol === "Administrador") tablaHTML += `<p style="font-size: 11px; color: #999; text-align: center; margin-top: 15px;">Total guardado y recuperado: ${ticketsAMostrar.length} tickets.</p>`;
+                    contenedor.innerHTML = tablaHTML;
+                }
+                document.getElementById('modal-historial').style.display = 'flex';
+            } catch (error) { alert("Error cargando tickets."); console.error(error); }
+        };
+
+        window.verTicketCompleto = (serialBusqueda) => {
+            // Ahora sí busca el ticket comparando el serial correctamente
+            const ticket = historialTickets.find(t => (t.serial || "ANTIGUO") === serialBusqueda);
+            if (!ticket) return alert("Detalle no disponible para este ticket.");
+
+            // Agrupar jugadas igual que en el panel visual principal
+
+            // Agrupar jugadas igual que en el panel visual principal
+            let grupos = {};
+            (ticket.jugadas || []).forEach(j => {
+                let clave = j.loteria + '-' + j.monto;
+                if (!grupos[clave]) grupos[clave] = { loteria: j.loteria || 'General', monto: parseFloat(j.monto || 0), numeros: [] };
+                grupos[clave].numeros.push(j.numero);
+            });
+
+            let listaHtml = Object.values(grupos).map(g => {
+                return `<li style="display:flex; flex-direction:column; margin-bottom:5px; border-bottom:1px dotted #ccc; padding-bottom:5px; font-family: monospace; font-size: 15px;">
+                            <span><b>${g.loteria.toUpperCase()}:</b></span>
+                            <span>${g.numeros.join('-')} X ${g.monto.toFixed(2)}</span>
+                        </li>`;
+            }).join('');
+
+            let fechaTexto = ticket.fechaImpresion || (ticket.fecha ? new Date(ticket.fecha).toLocaleString('es-VE', {hour12:true}) : "Fecha desconocida");
+            let sorteoTexto = ticket.horaSorteo ? `<br><span style="font-size: 15px; font-weight: bold; color: var(--primary-color);">SORTEO: ${ticket.horaSorteo}</span>` : "";
+            let totalFinal = parseFloat(ticket.total || 0).toFixed(2);
+            let serialVisual = ticket.serial ? ticket.serial : "ANTIGUO";
+
+            document.getElementById('contenido-detalle-ticket').innerHTML = `
+                <div class="ticket" style="min-height: auto; margin-bottom: 0; box-shadow: none;">
+                    <div class="ticket-header">
+                        *** TICKET DE VENTA ***<br>
+                        N° ${serialVisual}<br>
+                        <span style="font-size: 12px; font-weight: normal;">Cliente: ${ticket.nombreCliente || 'Desconocido'}</span><br>
+                        <span style="font-size: 11px; font-weight: normal; color: #555;">${fechaTexto}</span>
+                        ${sorteoTexto}
+                    </div>
+                    <ul class="ticket-list" style="margin-bottom: 15px;">${listaHtml}</ul>
+                    <div class="ticket-total">TOTAL: ${totalFinal} Bs</div>
+                </div>`;
+            document.getElementById('modal-detalle-ticket').style.display = 'flex';
+        };
+
+        function generarPanelNumeros() {
+            const panel = document.getElementById('panel-numeros');
+            const selRes = document.getElementById('select-numero-ganador');
+            ['0', '00', ...Array.from({length: 36}, (_, i) => (i + 1).toString().padStart(2, '0'))].forEach(num => {
+                const btn = document.createElement('button'); btn.textContent = num; btn.onclick = () => window.agregarNumero(num); panel.appendChild(btn);
+                const opt = document.createElement('option'); opt.value = num; opt.textContent = num; selRes.appendChild(opt);
+            });
+        }
+
+        window.agregarNumero = (numero) => {
+            const monto = parseFloat(document.getElementById('monto').value);
+            const loteria = document.getElementById('select-loteria').value;
+            if (isNaN(monto) || monto <= 0) return alert("Monto inválido.");
+            jugadasTicket.push({ numero, monto, loteria }); actualizarVistaTicket();
+        };
+
+        window.eliminarGrupo = (indicesStr) => { 
+            // Borra todos los números agrupados en esa línea de mayor a menor para no alterar el orden
+            let indices = indicesStr.split(',').map(Number).sort((a,b) => b-a);
+            indices.forEach(idx => jugadasTicket.splice(idx, 1)); 
+            actualizarVistaTicket(); 
+        };
+        window.limpiarTicket = () => { if(confirm("¿Limpiar ticket?")) { jugadasTicket = []; actualizarVistaTicket(); } };
+
+        function actualizarVistaTicket() {
+            const lista = document.getElementById('lista-ticket');
+            lista.innerHTML = ''; let totalBs = 0;
+            
+            // 1. Agrupar números por lotería y por monto apostado
+            let grupos = {};
+            jugadasTicket.forEach((j, i) => {
+                totalBs += j.monto;
+                let clave = j.loteria + '-' + j.monto;
+                if (!grupos[clave]) grupos[clave] = { loteria: j.loteria, monto: j.monto, numeros: [], indices: [] };
+                grupos[clave].numeros.push(j.numero);
+                grupos[clave].indices.push(i);
+            });
+
+            // 2. Dibujar los grupos en el ticket con el formato solicitado
+            for (let clave in grupos) {
+                let g = grupos[clave];
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="jugada-info" style="width: 100%;">
+                        <div style="font-size: 15px; font-family: monospace;">
+                            <b>${g.loteria.toUpperCase()}:</b> <br> ${g.numeros.join('-')} X ${g.monto.toFixed(2)}
+                        </div>
+                    </div>
+                    <button class="btn-delete" onclick="window.eliminarGrupo('${g.indices.join(',')}')">X</button>
+                `;
+                lista.appendChild(li);
+            }
+
+            document.getElementById('total-ticket').textContent = totalBs.toFixed(2);
+            document.getElementById('serial-ticket').textContent = serialActual.toString().padStart(6, '0');
+            // Nuevos datos de fecha y sorteo en el visor
+            document.getElementById('fecha-ticket').textContent = formatearFecha(new Date());
+            document.getElementById('sorteo-ticket').textContent = "SORTEO: " + obtenerProximoSorteo();
+        }
+
+        // ====== MOTOR DE ESCRITURA SEGURO PASO A PASO ======
+        window.procesarTicket = () => {
+            if (!conexionLista) return alert("Esperando conexión...");
+            if (jugadasTicket.length === 0) return alert("El ticket está vacío.");
+            
+            let totalTicket = jugadasTicket.reduce((sum, j) => sum + j.monto, 0);
+
+            if (usuarioActual.rol === "Jugador" && usuarioActual.saldo < totalTicket) {
+                return alert("⚠️ Saldo insuficiente. Por favor, reporta una recarga (Mínimo 1000 Bs) en la pestaña 'Mi Saldo'.");
+            }
+
+            const btnProcesar = document.getElementById('btn-procesar');
+            btnProcesar.textContent = "Guardando en Servidor..."; btnProcesar.disabled = true;
+
+            const fechaActual = new Date();
+            const ticketData = {
+                serial: serialActual.toString().padStart(6, '0'),
+                cedulaCliente: usuarioActual.cedula || "admin",
+                nombreCliente: usuarioActual.nombre || "Súper Admin",
+                fecha: fechaActual.toISOString(),
+                fechaImpresion: formatearFecha(fechaActual),
+                horaSorteo: obtenerProximoSorteo(),
+                jugadas: [...jugadasTicket],
+                total: totalTicket
+            };
+
+            const nuevoTicketRef = push(ref(db, 'tickets')); 
+
+            // Obligamos a Firebase a guardar el ticket primero de manera segura
+            set(nuevoTicketRef, ticketData).then(() => {
+                // Solo si guarda el ticket, avanzamos el contador
+                return set(ref(db, 'config/serialActual'), serialActual + 1);
+            }).then(() => {
+                // Solo si es jugador, descontamos saldo
+                if (usuarioActual.rol === "Jugador") {
+                    return set(ref(db, `usuarios/${usuarioActual.cedula}/saldo`), usuarioActual.saldo - totalTicket);
+                }
+            }).then(() => {
+                alert(`¡Ticket N° ${ticketData.serial} Guardado Correctamente!`);
+                jugadasTicket = []; 
+                actualizarVistaTicket();
+                // FORZAMOS LA APERTURA DE LA LISTA PARA VERLO
+                window.abrirModalHistorial(); 
+            }).catch(e => {
+                console.error("Error Firebase:", e);
+                alert("Error crítico en Firebase: " + e.message + " \nRevisa las reglas de seguridad.");
+            }).finally(() => {
+                btnProcesar.textContent = "Imprimir y Nuevo Ticket"; 
+                btnProcesar.disabled = false;
+            });
+        };
+
+        window.abrirModalResultados = () => { document.getElementById('modal-resultados').style.display='flex'; document.getElementById('area-resultados').style.display='none';};
+        
+        window.verificarGanadores = () => {
+            const loteria = document.getElementById('select-loteria-resultado').value;
+            const horaSorteoBusqueda = document.getElementById('select-hora-resultado').value; // Lee la hora elegida
+            const numero = document.getElementById('select-numero-ganador').value;
+            const listaDiv = document.getElementById('lista-ganadores');
+            const totalDiv = document.getElementById('total-pagar');
+            
+            listaDiv.innerHTML = ''; let totalPagar = 0; let ganadores = 0;
+
+            historialTickets.forEach(ticket => {
+                // FILTRO CLAVE: Solo revisamos los tickets que pertenecen al Sorteo de la Hora Seleccionada
+                if (ticket.horaSorteo === horaSorteoBusqueda) {
+                    const jG = (ticket.jugadas || []).filter(j => j.numero === numero && j.loteria === loteria);
+                    if (jG.length > 0) {
+                        ganadores++;
+                        jG.forEach(jugada => {
+                            const premio = jugada.monto * MULTIPLICADOR_PREMIO;
+                            totalPagar += premio;
+                            const div = document.createElement('div');
+                            div.style.cssText = "background:#e8f5e9; border:1px solid #c8e6c9; padding:10px; margin-bottom:10px; border-radius:4px;";
+                            div.innerHTML = `<b>Ticket N°:</b> ${ticket.serial} | <b>Cliente:</b> ${ticket.nombreCliente}<br><b>Apostó:</b> ${jugada.monto} Bs al ${numero} (${loteria} - ${horaSorteoBusqueda})<br><span style="color:#28a745; font-size:16px; font-weight:bold; float:right;">Premio: ${premio.toFixed(2)} Bs</span><div style="clear:both;"></div>`;
+                            listaDiv.appendChild(div);
+                        });
+                    }
+                }
+            });
+            
+            if(ganadores === 0) listaDiv.innerHTML = '<p style="text-align:center; margin-top:10px;">No hay ganadores para este sorteo.</p>';
+            totalDiv.innerHTML = `Total a Pagar: ${totalPagar.toFixed(2)} Bs`;
+            document.getElementById('area-resultados').style.display = 'block';
+        };
+
+        document.addEventListener("DOMContentLoaded", () => generarPanelNumeros());
+    </script>
+</body>
+</html>
