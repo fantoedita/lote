@@ -222,7 +222,8 @@
             <button class="btn-saldo" id="nav-btn-saldo" onclick="abrirModalSaldo()">💰 Mi Saldo</button>
             <button onclick="abrirModalHistorial()">🎟️ Tickets</button>
             
-            <button class="admin-only btn-recargas" onclick="abrirModalRecargas()">💳 Recargas</button>
+            <button id="nav-btn-recargas" class="admin-only btn-recargas" onclick="abrirModalRecargas()">💳 Recargas</button>
+            <button id="nav-btn-retiros" class="admin-only" style="background-color: rgba(255, 193, 7, 0.2) !important; border-color: var(--warning-color) !important;" onclick="abrirModalRetiros()">💸 Retiros</button>
             <button class="admin-only" onclick="abrirModalResultados()">🎲 Resultados</button>
             <button class="admin-only" onclick="abrirModalUsuarios()">👥 Usuarios</button>
             <button class="admin-only" onclick="verReporte()">📊 Reporte</button>
@@ -248,7 +249,7 @@
                     </div>
                     <div class="control-group">
                         <label>Monto (Bs):</label>
-                        <input type="number" id="monto" min="1" step="0.5" value="10.00">
+                        <input type="number" id="monto" min="50" step="20" value="50.00">
                     </div>
                 </div>
                 <div class="grid" id="panel-numeros"></div>
@@ -278,8 +279,20 @@
             <span class="close-btn" onclick="cerrarModal('modal-saldo')">&times;</span>
             <h3>Mi Billetera</h3>
             <p id="saldo-desc" style="margin-bottom: 5px;">Este es tu saldo disponible para jugar.</p>
-            <div style="background: #e8f5e9; border: 2px solid #c8e6c9; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
+            <div style="background: #e8f5e9; border: 2px solid #c8e6c9; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px; position: relative;">
                 <div style="font-size: 36px; font-weight: bold; color: #2e7d32;" id="monto-saldo-actual">0.00 Bs</div>
+                <button id="btn-mostrar-retiro" class="btn-outline" style="margin-top: 10px; display: none;" onclick="togglePanelRetiro()">📤 Retirar Saldo</button>
+            </div>
+
+            <div id="panel-retiro-jugador" style="display: none; background: #fff3cd; padding: 15px; border: 1px dashed #ffc107; border-radius: 5px; margin-bottom: 15px;">
+                <h4 style="margin-top: 0; color: #856404;">Solicitar Retiro a Banco</h4>
+                <div class="auth-form">
+                    <label>N° de Cuenta Bancaria Titular</label>
+                    <input type="text" id="cuenta-retiro" placeholder="Ej: 0102 0000 0000 0000 0000">
+                    <label>Monto a Retirar (Bs)</label>
+                    <input type="number" id="monto-retiro" placeholder="Ej: 500">
+                    <button class="auth-btn" style="background-color: var(--warning-color); color: #000;" onclick="solicitarRetiro()">Enviar solicitud al Admin</button>
+                </div>
             </div>
 
             <div id="panel-recarga-jugador" style="display: none;">
@@ -321,6 +334,28 @@
                     </thead>
                     <tbody id="tabla-recargas-body">
                         </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-retiros">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-btn" onclick="cerrarModal('modal-retiros')">&times;</span>
+            <h3>Solicitudes de Retiro</h3>
+            <p>Transfiere el dinero a la cuenta del jugador y luego presiona "Aceptar" para descontarlo de su sistema.</p>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Cuenta Bancaria</th>
+                            <th>Monto a Pagar</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-retiros-body"></tbody>
                 </table>
             </div>
         </div>
@@ -468,6 +503,7 @@
         let historialTickets = []; 
         let listaUsuarios = [];
         let listaRecargasPendientes = [];
+        let listaRetirosPendientes = []; // NUEVA VARIABLE
         const MULTIPLICADOR_PREMIO = 30;
         let conexionLista = false;
         let usuarioActual = null; 
@@ -529,6 +565,20 @@
                 });
             }
             actualizarTablaRecargas();
+            actualizarNotificaciones(); // 🔔 Llama a la notificación
+        });
+
+        // NUEVO LECTOR DE RETIROS
+        onValue(ref(db, 'retiros'), (snapshot) => {
+            listaRetirosPendientes = [];
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    if(data.estado === 'Pendiente') listaRetirosPendientes.push({ id: child.key, ...data });
+                });
+            }
+            actualizarTablaRetiros();
+            actualizarNotificaciones(); // 🔔 Llama a la notificación
         });
 
         onValue(ref(db, 'usuarios'), (snapshot) => {
@@ -568,7 +618,32 @@
                 update(ref(db), { [`/usuarios/${usuarioActual.cedula}/alertaPremio`]: null });
             }
         };
+        
+        // ================= NOTIFICACIONES EN TIEMPO REAL =================
+        function actualizarNotificaciones() {
+            const btnRecargas = document.getElementById('nav-btn-recargas');
+            const btnRetiros = document.getElementById('nav-btn-retiros');
+            
+            // Estilo de la burbuja roja tipo WhatsApp
+            const burbujaEstilo = "background: red; color: white; border-radius: 12px; padding: 2px 7px; font-size: 12px; margin-left: 5px; font-weight: bold; box-shadow: 0 0 8px red;";
 
+            if (btnRecargas) {
+                if (listaRecargasPendientes.length > 0) {
+                    btnRecargas.innerHTML = `💳 Recargas <span style="${burbujaEstilo}">${listaRecargasPendientes.length}</span>`;
+                } else {
+                    btnRecargas.innerHTML = `💳 Recargas`;
+                }
+            }
+
+            if (btnRetiros) {
+                if (listaRetirosPendientes.length > 0) {
+                    btnRetiros.innerHTML = `💸 Retiros <span style="${burbujaEstilo}">${listaRetirosPendientes.length}</span>`;
+                } else {
+                    btnRetiros.innerHTML = `💸 Retiros`;
+                }
+            }
+        }
+        // =================================================================
         let listaSesionesActivas = [];
         onValue(ref(db, 'sesiones'), (snapshot) => {
             usuariosOnline = 0;
@@ -684,10 +759,12 @@
             document.getElementById('monto-saldo-actual').textContent = parseFloat(usuarioActual.saldo).toFixed(2) + " Bs";
             
             // NUEVO: Mostrar saldo en el botón superior al entrar
+           // NUEVO: Mostrar saldo en el botón superior al entrar
             if (usuarioActual.rol === "Jugador") {
                 document.getElementById('nav-btn-saldo').textContent = `💰 Mi Saldo: ${parseFloat(usuarioActual.saldo).toFixed(2)} Bs`;
             } else {
                 document.getElementById('nav-btn-saldo').textContent = `💰 Caja Fuerte`;
+                actualizarNotificaciones(); // 🔔 Disparar alertas al iniciar sesión
             }
             
             actualizarEstadoConexion();
@@ -698,10 +775,12 @@
                 adminBtns.forEach(btn => btn.style.display = 'flex');
                 document.getElementById('saldo-desc').textContent = "Total de ingresos brutos de la agencia.";
                 document.getElementById('panel-recarga-jugador').style.display = 'none';
+                document.getElementById('btn-mostrar-retiro').style.display = 'none'; // Se oculta al admin
             } else {
                 adminBtns.forEach(btn => btn.style.display = 'none');
                 document.getElementById('saldo-desc').textContent = "Este es tu saldo disponible para jugar.";
                 document.getElementById('panel-recarga-jugador').style.display = 'block';
+                document.getElementById('btn-mostrar-retiro').style.display = 'inline-block'; // Se muestra al jugador
             }
 
             // Ahora registramos a todos (incluyendo admin) con su nombre y rol
@@ -778,6 +857,97 @@
                 }
             });
         };
+
+// ================= LÓGICA DE RETIROS =================
+        window.togglePanelRetiro = () => {
+            const panel = document.getElementById('panel-retiro-jugador');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        };
+
+        window.solicitarRetiro = () => {
+            const cuenta = document.getElementById('cuenta-retiro').value.trim();
+            const monto = parseFloat(document.getElementById('monto-retiro').value);
+            
+            if(!cuenta) return alert("Debes ingresar tu número de cuenta bancaria.");
+            if(isNaN(monto) || monto <= 0) return alert("Ingresa un monto válido para retirar.");
+            if(monto > usuarioActual.saldo) return alert("⚠️ No tienes saldo suficiente para realizar este retiro.");
+
+            push(ref(db, 'retiros'), {
+                cedula: usuarioActual.cedula,
+                nombre: usuarioActual.nombre,
+                cuenta: cuenta,
+                monto: monto,
+                estado: "Pendiente",
+                fecha: new Date().toISOString()
+            }).then(() => {
+                alert("¡Solicitud de retiro enviada! Espera a que el Administrador te transfiera.");
+                document.getElementById('cuenta-retiro').value = ''; 
+                document.getElementById('monto-retiro').value = '';
+                togglePanelRetiro();
+                window.cerrarModal('modal-saldo');
+            });
+        };
+
+        window.abrirModalRetiros = () => { document.getElementById('modal-retiros').style.display = 'flex'; };
+
+        function actualizarTablaRetiros() {
+            const tbody = document.getElementById('tabla-retiros-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(listaRetirosPendientes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay solicitudes de retiro.</td></tr>'; return;
+            }
+            listaRetirosPendientes.forEach(ret => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${ret.nombre}</b><br><span style="font-size:12px;color:#666;">C.I: ${ret.cedula}</span></td>
+                    <td style="font-family: monospace; font-size: 15px; color: var(--primary-color);"><b>${ret.cuenta}</b></td>
+                    <td style="font-weight: bold; color: var(--danger-color);">${ret.monto.toFixed(2)} Bs</td>
+                    <td style="display: flex; gap: 5px;">
+                        <button onclick="aprobarRetiro('${ret.id}', '${ret.cedula}', ${ret.monto})" style="background:var(--success-color); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight: bold;">✅ Aceptar</button>
+                        <button onclick="rechazarRetiro('${ret.id}')" style="background:var(--danger-color); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight: bold;">❌ Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.aprobarRetiro = (idRetiro, cedulaUsuario, monto) => {
+            if(!confirm(`¿Confirmas que ya enviaste ${monto} Bs a la cuenta bancaria de este jugador? Al aceptar, se le descontará de su saldo en el sistema.`)) return;
+
+            // Extraemos el saldo en tiempo real antes de descontar para asegurar que los fondos siguen ahí
+            get(child(ref(db), `usuarios/${cedulaUsuario}`)).then(snap => {
+                if(snap.exists()) {
+                    const user = snap.val();
+                    if (user.saldo < monto) {
+                        return alert("El jugador ya no tiene saldo suficiente para cubrir este retiro (probablemente jugó mientras esperaba).");
+                    }
+                    const nuevoSaldo = user.saldo - monto;
+                    
+                    let updates = {};
+                    updates[`/usuarios/${cedulaUsuario}/saldo`] = nuevoSaldo;
+                    updates[`/retiros/${idRetiro}/estado`] = 'Aprobado';
+
+                    update(ref(db), updates).then(() => {
+                        alert("¡Retiro procesado! El saldo ha sido descontado de la cuenta del jugador.");
+                    }).catch(error => {
+                        alert("Error: " + error.message);
+                    });
+                }
+            });
+        };
+
+        window.rechazarRetiro = (idRetiro) => {
+            if(!confirm("¿Estás seguro de eliminar/rechazar esta solicitud de retiro? El dinero NO se descontará del jugador.")) return;
+
+            // Marcamos el estado como 'Rechazado' en la base de datos para que desaparezca de la lista de Pendientes
+            update(ref(db), { [`/retiros/${idRetiro}/estado`]: 'Rechazado' }).then(() => {
+                alert("¡Solicitud de retiro eliminada con éxito!");
+            }).catch(error => {
+                alert("Error: " + error.message);
+            });
+        };
+        // =====================================================
 
         // ADMIN USUARIOS
         window.abrirModalUsuarios = () => document.getElementById('modal-usuarios').style.display = 'flex';
@@ -927,7 +1097,8 @@
         window.agregarNumero = (numero) => {
             const monto = parseFloat(document.getElementById('monto').value);
             const loteria = document.getElementById('select-loteria').value;
-            if (isNaN(monto) || monto <= 0) return alert("Monto inválido.");
+            // Nueva regla: Mínimo 50 Bs
+            if (isNaN(monto) || monto < 50) return alert("El monto mínimo de apuesta es de 50 Bs.");
             jugadasTicket.push({ numero, monto, loteria }); actualizarVistaTicket();
         };
 
