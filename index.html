@@ -122,9 +122,10 @@
         .monto-control input, .monto-control select { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 150px; }
         .monto-control select { background-color: white; font-weight: bold; color: var(--primary-color); }
 
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; }
-        .grid button { padding: 15px 10px; font-size: 18px; font-weight: bold; background-color: #fff; border: 2px solid var(--primary-color); color: var(--primary-color); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-        .grid button:hover { background-color: var(--primary-color); color: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; }
+        .grid button { position: relative; height: 75px; padding: 0; background-color: #fff; border: 2px solid var(--primary-color); border-radius: 6px; cursor: pointer; transition: all 0.2s; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; display: flex; align-items: flex-end; justify-content: center;}
+        .grid button span.num-badge { background: rgba(0, 0, 0, 0.75); color: #fff; width: 100%; text-align: center; font-size: 16px; font-weight: bold; padding: 3px 0; z-index: 2; }
+        .grid button:hover { border-color: #000; transform: scale(1.05); }
 
         /* Ticket */
         .ticket-container { flex: 1; display: flex; flex-direction: column; gap: 15px; }
@@ -201,14 +202,6 @@
                 <input type="password" id="reg-clave" placeholder="Crea una clave secreta">
                 <label>Teléfono de Contacto</label>
                 <input type="text" id="reg-contacto" placeholder="Ej: 04141234567">
-                
-                <div class="pago-movil-box">
-                    <h5>Datos para cobrar Premios (Pago Móvil)</h5>
-                    <label>Banco</label>
-                    <input type="text" id="reg-banco" placeholder="Ej: Banco de Venezuela">
-                    <label style="margin-top: 10px; display: block;">Teléfono Afiliado</label>
-                    <input type="text" id="reg-telf-banco" placeholder="Ej: 04141234567">
-                </div>
 
                 <button class="auth-btn" style="background-color: var(--success-color);" onclick="registrarUsuario()">Completar Registro</button>
             </div>
@@ -227,6 +220,7 @@
             <button class="admin-only" onclick="abrirModalResultados()">🎲 Resultados</button>
             <button class="admin-only" onclick="abrirModalUsuarios()">👥 Usuarios</button>
             <button class="admin-only" onclick="verReporte()">📊 Reporte</button>
+            <button class="admin-only" onclick="abrirModalConfiguracion()" style="background-color: rgba(108, 117, 125, 0.2) !important; border-color: #6c757d !important;">⚙️ Configurar</button>
             
             <button class="btn-salir" onclick="cerrarSesion()">🚪 Salir</button>
         </div>
@@ -287,11 +281,32 @@
             <div id="panel-retiro-jugador" style="display: none; background: #fff3cd; padding: 15px; border: 1px dashed #ffc107; border-radius: 5px; margin-bottom: 15px;">
                 <h4 style="margin-top: 0; color: #856404;">Solicitar Retiro a Banco</h4>
                 <div class="auth-form">
-                    <label>N° de Cuenta Bancaria Titular</label>
-                    <input type="text" id="cuenta-retiro" placeholder="Ej: 0102 0000 0000 0000 0000">
+                    
+                    <!-- SECCIÓN 1: Formulario la primera vez -->
+                    <div id="setup-cuenta-section">
+                        <label>N° de Cuenta Bancaria (Solo 20 dígitos)</label>
+                        <input type="text" id="cuenta-retiro" placeholder="Ej: 01020000000000000000" maxlength="20" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        <label>Tipo de Cuenta</label>
+                        <select id="tipo-cuenta-retiro" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px;">
+                            <option value="Corriente">Corriente</option>
+                            <option value="Ahorro">Ahorro</option>
+                        </select>
+                    </div>
+
+                    <!-- SECCIÓN 2: Cuenta bloqueada para siempre -->
+                    <div id="readonly-cuenta-section" style="display:none; background: #e9ecef; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                        <p style="margin: 0; font-size: 12px; color: #666;">Cuenta Registrada (No editable):</p>
+                        <h4 style="margin: 5px 0; color: #000; letter-spacing: 1px;" id="cuenta-registrada-text"></h4>
+                        <span style="font-size: 13px; font-weight: bold; color: var(--primary-color);" id="tipo-registrada-text"></span>
+                    </div>
+
                     <label>Monto a Retirar (Bs)</label>
                     <input type="number" id="monto-retiro" placeholder="Ej: 500">
                     <button class="auth-btn" style="background-color: var(--warning-color); color: #000;" onclick="solicitarRetiro()">Enviar solicitud al Admin</button>
+                    
+                    <p style="font-size: 11px; color: var(--danger-color); text-align: center; margin-top: 0; font-weight: bold;">
+                        ⚠️ Es obligatorio que el número de cuenta ingresado pertenezca al titular de esta cuenta en el sistema.
+                    </p>
                 </div>
             </div>
 
@@ -372,7 +387,7 @@
                 <div class="auth-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div><label>Cédula</label><input type="text" id="admin-c-cedula"></div>
                     <div><label>Nombre</label><input type="text" id="admin-c-nombre"></div>
-                    <div><label>Contraseña</label><input type="text" id="admin-c-clave"></div>
+                    <div><label>Contraseña</label><input type="text" id="admin99-c-clave"></div>
                     <div>
                         <label>Membresía</label>
                         <select id="admin-c-rol" style="width: 100%; padding: 10px; border-radius: 5px;">
@@ -393,11 +408,24 @@
                             <th>Clave</th>
                             <th>Saldo</th>
                             <th>Rol</th>
+                            <th>Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-usuarios-body"></tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+<!-- NUEVO MODAL DE CONFIGURACIÓN DE IMÁGENES -->
+    <div class="modal-overlay" id="modal-configuracion">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-btn" onclick="cerrarModal('modal-configuracion')">&times;</span>
+            <h3>Configuración de Imágenes (1:1)</h3>
+            <p>Haz clic en cualquier número para subir o cambiar su imagen. El sistema la recortará a formato cuadrado y se actualizará para todos los jugadores.</p>
+            <div class="grid" id="panel-config-numeros" style="margin-top: 15px;"></div>
+            <!-- Subidor de archivos invisible -->
+            <input type="file" id="uploader-img" accept="image/*" style="display: none;">
         </div>
     </div>
 
@@ -518,11 +546,21 @@
 
         function obtenerProximoSorteo() {
             const ahora = new Date();
-            let hora = ahora.getHours();
-            // Siempre calcula para la siguiente hora en punto
-            hora += 1;
-            let ampm = hora >= 12 && hora < 24 ? 'PM' : 'AM';
-            let hora12 = hora % 12 || 12;
+            let h = ahora.getHours();
+            let m = ahora.getMinutes();
+            
+            // Si el minuto es 55 o mayor, el sistema ya salta al sorteo de la siguiente hora
+            let targetHour = m > 54 ? h + 2 : h + 1;
+            
+            // El horario de sorteos es desde las 8 AM (8) hasta las 7 PM (19)
+            // Si la hora calculada es mayor a las 7 PM o menor a las 8 AM, el ticket será para las 8:00 AM
+            if (targetHour > 19 || targetHour < 8) {
+                targetHour = 8;
+            }
+            
+            let ampm = targetHour >= 12 && targetHour < 24 ? 'PM' : 'AM';
+            let hora12 = targetHour % 12 || 12;
+            
             return `${hora12}:00 ${ampm}`;
         }
 
@@ -598,10 +636,22 @@
                         }
 
                         // EXPLOTAR NOTIFICACIÓN SI HAY UN PREMIO
+                        // EXPLOTAR NOTIFICACIÓN SI HAY UN PREMIO
                         if (usr.alertaPremio) {
                             document.getElementById('notif-ticket-num').textContent = "#" + usr.alertaPremio.ticket;
                             document.getElementById('notif-monto-premio').textContent = parseFloat(usr.alertaPremio.monto).toFixed(2) + " Bs";
                             document.getElementById('modal-premio').style.display = 'flex';
+                        }
+
+                        // BLOQUEAR CUENTA BANCARIA SI YA ESTÁ REGISTRADA
+                        if (usr.cuentaBancaria) {
+                            document.getElementById('setup-cuenta-section').style.display = 'none';
+                            document.getElementById('readonly-cuenta-section').style.display = 'block';
+                            document.getElementById('cuenta-registrada-text').textContent = usr.cuentaBancaria;
+                            document.getElementById('tipo-registrada-text').textContent = "Cuenta " + usr.tipoCuenta;
+                        } else {
+                            document.getElementById('setup-cuenta-section').style.display = 'block';
+                            document.getElementById('readonly-cuenta-section').style.display = 'none';
                         }
                         
                         verificarAlertaSaldo();
@@ -714,19 +764,20 @@
             const cedula = document.getElementById('reg-cedula').value.trim();
             const clave = document.getElementById('reg-clave').value.trim();
             const contacto = document.getElementById('reg-contacto').value.trim();
-            const banco = document.getElementById('reg-banco').value.trim();
-            const telf = document.getElementById('reg-telf-banco').value.trim();
 
             if(!nombre || !cedula || !clave) return alert("Nombre, Cédula y Contraseña son obligatorios.");
 
             get(child(ref(db), `usuarios/${cedula}`)).then((snapshot) => {
                 if (snapshot.exists()) alert("¡Esta cédula ya está registrada!");
                 else {
-                    const nuevoUser = { cedula, nombre, clave, contacto, banco, telfBanco: telf, rol: "Jugador", saldo: 0.00 };
+                    const nuevoUser = { cedula, nombre, clave, contacto, rol: "Jugador", saldo: 0.00 };
                     set(ref(db, `usuarios/${cedula}`), nuevoUser).then(() => {
                         alert("¡Registro exitoso! Ya puedes iniciar sesión.");
                         document.getElementById('login-cedula').value = cedula;
                         document.getElementById('login-clave').value = clave;
+                        // NUEVO: Guardar en memoria del navegador
+                        localStorage.setItem('lotoCedula', cedula);
+                        localStorage.setItem('lotoClave', clave);
                         window.toggleAuth('login');
                     });
                 }
@@ -741,12 +792,17 @@
 
             if(cedula === "admin" && clave === "admin") {
                 usuarioActual = { nombre: "Súper Admin", cedula: "admin", rol: "Administrador", saldo: 0 };
+                localStorage.setItem('lotoCedula', cedula);
+                localStorage.setItem('lotoClave', clave);
                 entrarAlSistema(); return;
             }
 
             get(child(ref(db), `usuarios/${cedula}`)).then((snapshot) => {
                 if (snapshot.exists() && snapshot.val().clave === clave) {
                     usuarioActual = snapshot.val();
+                    // NUEVO: Guardar datos validados en memoria
+                    localStorage.setItem('lotoCedula', cedula);
+                    localStorage.setItem('lotoClave', clave);
                     entrarAlSistema();
                 } else alert("Datos incorrectos o usuario no registrado.");
             });
@@ -796,7 +852,7 @@
                 jugadasTicket = []; actualizarVistaTicket();
                 document.getElementById('app-container').style.display = 'none';
                 document.getElementById('auth-container').style.display = 'block';
-                document.getElementById('login-clave').value = ''; 
+                // SE ELIMINÓ LA LÍNEA QUE BORRABA LA CONTRASEÑA
                 document.getElementById('alerta-saldo-cero').style.display = 'none';
                 actualizarEstadoConexion();
             }
@@ -865,26 +921,56 @@
         };
 
         window.solicitarRetiro = () => {
-            const cuenta = document.getElementById('cuenta-retiro').value.trim();
+            let cuentaFinal = "";
+            let tipoFinal = "";
+
+            if (usuarioActual.cuentaBancaria) {
+                // Si el jugador ya guardó su cuenta antes, el sistema la usa automáticamente
+                cuentaFinal = usuarioActual.cuentaBancaria;
+                tipoFinal = usuarioActual.tipoCuenta;
+            } else {
+                // Si es su primera vez, extraemos los datos del formulario y los validamos
+                cuentaFinal = document.getElementById('cuenta-retiro').value.trim();
+                tipoFinal = document.getElementById('tipo-cuenta-retiro').value;
+                
+                if (!cuentaFinal || cuentaFinal.length !== 20) {
+                    return alert("Debes ingresar un número de cuenta bancaria válido de exactamente 20 dígitos.");
+                }
+            }
+
             const monto = parseFloat(document.getElementById('monto-retiro').value);
-            
-            if(!cuenta) return alert("Debes ingresar tu número de cuenta bancaria.");
             if(isNaN(monto) || monto <= 0) return alert("Ingresa un monto válido para retirar.");
             if(monto > usuarioActual.saldo) return alert("⚠️ No tienes saldo suficiente para realizar este retiro.");
 
-            push(ref(db, 'retiros'), {
+            const dbRef = ref(db);
+            const updates = {};
+            const nuevoRetiroKey = push(child(dbRef, 'retiros')).key;
+
+            // Datos que le llegarán al administrador
+            updates[`/retiros/${nuevoRetiroKey}`] = {
                 cedula: usuarioActual.cedula,
                 nombre: usuarioActual.nombre,
-                cuenta: cuenta,
+                cuenta: cuentaFinal,
+                tipoCuenta: tipoFinal,
                 monto: monto,
                 estado: "Pendiente",
                 fecha: new Date().toISOString()
-            }).then(() => {
-                alert("¡Solicitud de retiro enviada! Espera a que el Administrador te transfiera.");
+            };
+
+            // Regla para guardar la cuenta para siempre en el perfil del jugador
+            if (!usuarioActual.cuentaBancaria) {
+                updates[`/usuarios/${usuarioActual.cedula}/cuentaBancaria`] = cuentaFinal;
+                updates[`/usuarios/${usuarioActual.cedula}/tipoCuenta`] = tipoFinal;
+            }
+
+            update(dbRef, updates).then(() => {
+                alert("¡Solicitud enviada! Su cuenta bancaria ha quedado registrada y bloqueada por seguridad.");
                 document.getElementById('cuenta-retiro').value = ''; 
                 document.getElementById('monto-retiro').value = '';
                 togglePanelRetiro();
                 window.cerrarModal('modal-saldo');
+            }).catch(e => {
+                alert("Error al solicitar retiro: " + e.message);
             });
         };
 
@@ -901,7 +987,10 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><b>${ret.nombre}</b><br><span style="font-size:12px;color:#666;">C.I: ${ret.cedula}</span></td>
-                    <td style="font-family: monospace; font-size: 15px; color: var(--primary-color);"><b>${ret.cuenta}</b></td>
+                    <td style="font-family: monospace; font-size: 15px; color: var(--primary-color);">
+                        <b>${ret.cuenta}</b><br>
+                        <span style="font-size: 12px; color: #555;">${ret.tipoCuenta || 'Corriente'}</span>
+                    </td>
                     <td style="font-weight: bold; color: var(--danger-color);">${ret.monto.toFixed(2)} Bs</td>
                     <td style="display: flex; gap: 5px;">
                         <button onclick="aprobarRetiro('${ret.id}', '${ret.cedula}', ${ret.monto})" style="background:var(--success-color); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight: bold;">✅ Aceptar</button>
@@ -958,7 +1047,14 @@
             tbody.innerHTML = '';
             listaUsuarios.forEach(user => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${user.cedula}</td><td>${user.nombre}</td><td><span style="color:#dc3545;">${user.clave}</span></td><td>${parseFloat(user.saldo).toFixed(2)} Bs</td><td><span class="rol-badge ${user.rol === "Administrador" ? "rol-admin" : "rol-jugador"}">${user.rol}</span></td>`;
+                tr.innerHTML = `
+                    <td><input type="text" id="edit-cedula-${user.cedula}" value="${user.cedula}" style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
+                    <td><input type="text" id="edit-nombre-${user.cedula}" value="${user.nombre}" style="width: 120px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
+                    <td><input type="text" id="edit-clave-${user.cedula}" value="${user.clave}" style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
+                    <td><input type="number" id="edit-saldo-${user.cedula}" value="${parseFloat(user.saldo).toFixed(2)}" style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;" step="0.1"></td>
+                    <td><span class="rol-badge ${user.rol === "Administrador" ? "rol-admin" : "rol-jugador"}">${user.rol}</span></td>
+                    <td><button onclick="guardarEdicionUsuario('${user.cedula}')" style="background:var(--success-color); color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">💾 Guardar</button></td>
+                `;
                 tbody.appendChild(tr);
             });
         }
@@ -972,6 +1068,44 @@
             set(ref(db, `usuarios/${cedula}`), { cedula, nombre, clave, rol, saldo: 0.00, contacto: "", banco: "", telfBanco: "" }).then(() => {
                 alert("Usuario creado."); window.toggleNuevoUsuario();
             });
+        };
+
+        // NUEVA FUNCIÓN: Guardar edición de usuario manual
+        window.guardarEdicionUsuario = (cedulaOriginal) => {
+            if(!confirm("¿Seguro que deseas guardar los cambios en este usuario?")) return;
+
+            const nuevaCedula = document.getElementById(`edit-cedula-${cedulaOriginal}`).value.trim();
+            const nuevoNombre = document.getElementById(`edit-nombre-${cedulaOriginal}`).value.trim();
+            const nuevaClave = document.getElementById(`edit-clave-${cedulaOriginal}`).value.trim();
+            const nuevoSaldo = parseFloat(document.getElementById(`edit-saldo-${cedulaOriginal}`).value);
+
+            if(!nuevaCedula || !nuevoNombre || !nuevaClave || isNaN(nuevoSaldo)) return alert("Todos los campos son obligatorios.");
+
+            if (cedulaOriginal === nuevaCedula) {
+                // Si la cédula es la misma, solo actualizamos los demás datos sin mover la ubicación
+                update(ref(db, `usuarios/${cedulaOriginal}`), {
+                    nombre: nuevoNombre,
+                    clave: nuevaClave,
+                    saldo: nuevoSaldo
+                }).then(() => alert("✅ Usuario actualizado con éxito."));
+            } else {
+                // Si cambió la cédula, debemos mover la "carpeta" entera del usuario a la nueva cédula
+                get(child(ref(db), `usuarios/${cedulaOriginal}`)).then(snap => {
+                    if (snap.exists()) {
+                        let userData = snap.val();
+                        userData.cedula = nuevaCedula;
+                        userData.nombre = nuevoNombre;
+                        userData.clave = nuevaClave;
+                        userData.saldo = nuevoSaldo;
+                        
+                        let updates = {};
+                        updates[`/usuarios/${nuevaCedula}`] = userData;
+                        updates[`/usuarios/${cedulaOriginal}`] = null; // Borramos el rastro del usuario viejo
+                        
+                        update(ref(db), updates).then(() => alert("✅ Cédula y datos actualizados con éxito."));
+                    }
+                });
+            }
         };
 
         // FUNCIÓN DE REPORTE 
@@ -1085,14 +1219,95 @@
             document.getElementById('modal-detalle-ticket').style.display = 'flex';
         };
 
+        let numeroEditando = null;
+
+        window.abrirModalConfiguracion = () => { document.getElementById('modal-configuracion').style.display = 'flex'; };
+
         function generarPanelNumeros() {
             const panel = document.getElementById('panel-numeros');
+            const panelConfig = document.getElementById('panel-config-numeros');
             const selRes = document.getElementById('select-numero-ganador');
+            
+            panel.innerHTML = ''; 
+            if(panelConfig) panelConfig.innerHTML = '';
+            selRes.innerHTML = '';
+
             ['0', '00', ...Array.from({length: 36}, (_, i) => (i + 1).toString().padStart(2, '0'))].forEach(num => {
-                const btn = document.createElement('button'); btn.textContent = num; btn.onclick = () => window.agregarNumero(num); panel.appendChild(btn);
+                // 1. Botón Panel Principal (Jugadores)
+                const btn = document.createElement('button'); 
+                btn.id = `btn-juego-${num}`;
+                btn.onclick = () => window.agregarNumero(num); 
+                btn.innerHTML = `<span class="num-badge">${num}</span>`;
+                panel.appendChild(btn);
+
+                // 2. Botón Panel Configuración (Administrador)
+                if(panelConfig) {
+                    const btnConf = document.createElement('button'); 
+                    btnConf.id = `btn-conf-${num}`;
+                    btnConf.onclick = () => abrirSubidaImagen(num); 
+                    btnConf.innerHTML = `<span class="num-badge">${num}</span>`;
+                    panelConfig.appendChild(btnConf);
+                }
+
+                // 3. Opciones para el selector de resultados
                 const opt = document.createElement('option'); opt.value = num; opt.textContent = num; selRes.appendChild(opt);
             });
         }
+
+        window.abrirSubidaImagen = (num) => {
+            numeroEditando = num;
+            document.getElementById('uploader-img').click();
+        };
+
+        // Procesador Automático de Imágenes (Recorte 1:1 y Base64 a Firebase)
+        document.getElementById('uploader-img').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const size = 180; // Resolución optimizada para botones rápidos
+                    canvas.width = size;
+                    canvas.height = size;
+                    
+                    // Recorte Cuadrado Perfecto 1:1 centrado
+                    const minDim = Math.min(img.width, img.height);
+                    const startX = (img.width - minDim) / 2;
+                    const startY = (img.height - minDim) / 2;
+                    
+                    ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // Subir al nodo 'config/imagenes' en Firebase
+                    set(ref(db, `config/imagenes/${numeroEditando}`), base64).then(() => {
+                        alert(`📸 Imagen actualizada para el número ${numeroEditando}`);
+                    }).catch(error => alert("Error al subir: " + error.message));
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            this.value = ''; // Resetea el input para poder subir más fotos luego
+        });
+
+        // LECTOR DE IMÁGENES EN TIEMPO REAL (Para todos los conectados)
+        onValue(ref(db, 'config/imagenes'), (snapshot) => {
+            if (snapshot.exists()) {
+                const imagenes = snapshot.val();
+                for (let num in imagenes) {
+                    const imgBase64 = imagenes[num];
+                    const btnJuego = document.getElementById(`btn-juego-${num}`);
+                    const btnConf = document.getElementById(`btn-conf-${num}`);
+                    
+                    // Pintar la imagen en el botón de los jugadores y en el de configuración
+                    if (btnJuego) btnJuego.style.backgroundImage = `url(${imgBase64})`;
+                    if (btnConf) btnConf.style.backgroundImage = `url(${imgBase64})`;
+                }
+            }
+        });
 
         window.agregarNumero = (numero) => {
             const monto = parseFloat(document.getElementById('monto').value);
@@ -1150,6 +1365,27 @@
         window.procesarTicket = () => {
             if (!conexionLista) return alert("Esperando conexión...");
             if (jugadasTicket.length === 0) return alert("El ticket está vacío.");
+            
+            // NUEVA ALERTA DE SORTEO CERRADO (Minutos 55 al 05)
+            const ahoraTiempo = new Date();
+            const minActual = ahoraTiempo.getMinutes();
+            const horaActual = ahoraTiempo.getHours();
+
+            if (minActual >= 55 || minActual <= 5) {
+                let hCerrada = minActual >= 55 ? horaActual + 1 : horaActual;
+                let hSiguiente = minActual >= 55 ? horaActual + 2 : horaActual + 1;
+                
+                // Ajustar al horario de trabajo (8 AM a 7 PM)
+                if (hCerrada > 19 || hCerrada < 8) hCerrada = 8;
+                if (hSiguiente > 19 || hSiguiente < 8) hSiguiente = 8;
+
+                let txtCerrada = `${hCerrada % 12 || 12}:00 ${hCerrada >= 12 && hCerrada < 24 ? 'PM' : 'AM'}`;
+                let txtSiguiente = `${hSiguiente % 12 || 12}:00 ${hSiguiente >= 12 && hSiguiente < 24 ? 'PM' : 'AM'}`;
+
+                if(!confirm(`⚠️ ATENCIÓN: El sorteo de las ${txtCerrada} ya se encuentra cerrado (se están esperando resultados).\n\n¿Deseas jugar este ticket para el sorteo de las ${txtSiguiente}?`)) {
+                    return; // Si cancela, se detiene el proceso y no se cobra
+                }
+            }
             
             let totalTicket = jugadasTicket.reduce((sum, j) => sum + j.monto, 0);
 
@@ -1276,7 +1512,17 @@
             });
         };
 
-        document.addEventListener("DOMContentLoaded", () => generarPanelNumeros());
+        document.addEventListener("DOMContentLoaded", () => {
+            generarPanelNumeros();
+            
+            // NUEVO: Autocompletar datos guardados al abrir la página
+            const cedulaGuardada = localStorage.getItem('lotoCedula');
+            const claveGuardada = localStorage.getItem('lotoClave');
+            if(cedulaGuardada && claveGuardada) {
+                document.getElementById('login-cedula').value = cedulaGuardada;
+                document.getElementById('login-clave').value = claveGuardada;
+            }
+        });
     </script>
 </body>
 </html>
